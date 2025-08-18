@@ -3,9 +3,5 @@ print out tree diagram of merge sort on
 figure out sort/reverse/key tracking 
     automatic or manual, or automatic + overrides?
 
-figure out SearchObject
-    if found, upr & lwr must show the first and last occurence respectively
-    if not found, found=None and upr & lwr show the closest numbers
-
 iu_list.hash()
 iu_list.reset_hash()
