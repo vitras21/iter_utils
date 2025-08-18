@@ -2,7 +2,8 @@ from .utils import clamp
 from copy import deepcopy
 
 class SearchObject:
-    def __init__(self, target=None, found=None, occurences=0, floor=None, ceil=None, sorted=None, reverse=None):
+    def __init__(self, iterable=None, target=None, found=None, occurences=0, floor=None, ceil=None, sorted=None, reverse=None):
+        self.iterable = iterable
         self.target = target
         self.found = found
         self.occurences = occurences
@@ -11,7 +12,7 @@ class SearchObject:
         self.sorted = sorted
         self.reverse = reverse
     def __repr__(self):
-        return f"SearchObject(target={self.target}, found={self.found}, occurences={self.occurences}, floor={self.floor}, ceil={self.ceil}, sorted={self.sorted}, reverse={self.reverse})"
+        return f"SearchObject(iterable={self.iterable}, target={self.target}, found={self.found}, occurences={self.occurences}, floor={self.floor}, ceil={self.ceil}, sorted={self.sorted}, reverse={self.reverse})"
 
 
 def is_sorted(self,i=..., *, reverse=None, key=None):
@@ -124,4 +125,4 @@ def binary_search(self, target, *, reverse=None, key=None, override_sorted=False
             occurences = upr_bound - lwr_bound + 1
             break
 
-    return SearchObject(target=target*rev, found=found, occurences=occurences, floor=lwr_bound, ceil=upr_bound, sorted=not override_sorted, reverse=self.is_reversed)
+    return SearchObject(iterable=self, target=target*rev, found=found, occurences=occurences, floor=lwr_bound, ceil=upr_bound, sorted=not override_sorted, reverse=self.is_reversed)
