@@ -79,8 +79,7 @@ def binary_search(self, target, *, reverse=None, key=None, override_sorted=False
     """
     Searches for a specific item in a sorted list, returning first & last occurence indexes
     OUTPUTS:
-    SearchObject -- found successfully
-    None -- item not found
+    SearchObject -- successful search lead to either a match or a range of indexes
     -1 -- ERROR: list is not sorted. Can be overriden with `override_sorted=True`
     """
     found = False
