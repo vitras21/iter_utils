@@ -1,7 +1,4 @@
 print out tree diagram of merge sort on 
 
-figure out sort/reverse/key tracking 
-    automatic or manual, or automatic + overrides?
-
-iu_list.hash()
-iu_list.reset_hash()
+iu_list.activate_key()
+iu_list.deactivate_key()

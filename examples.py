@@ -1,5 +1,5 @@
 from random import randint
-from .core import iu_list
+from iter_utils.core import iu_list
 
 def main():
     random_list = [randint(-99,100) for _ in range(10)]
@@ -8,7 +8,12 @@ def main():
     ulist = iu_list(many_duplicates)
     
     print(ulist)
-    ulist.merge_sort(key=lambda x: x)
+    key=lambda x:x
+    ulist.merge_sort(key=key)
+    print(ulist.sorted and key==ulist.sorting_key)
+    ulist.merge_sort(key=key)
+    ulist.merge_sort(key=key)
+    ulist.merge_sort(key=key)
     print(ulist)
 
     print(ulist.binary_search(2))
