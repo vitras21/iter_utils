@@ -4,105 +4,118 @@ import dis
 import types
 
 class iu_lambda:
-    def __init__(self, key=None, *, formula=None, index_path=None, variables=None, total_vars_loaded=None):
+    def __init__(self, key=None, *, formula=None, index_path=None, vars_=None, total_vars_loaded=None):
         if key is not None:
             formula, index_path, variables, total_vars_loaded = iu_lambda.from_lambda(key)
         elif any(arg is None for arg in (formula, index_path, variables, total_vars_loaded)):
             raise ValueError("Invalid arguments for custom iu_lambda")
-        self.for_eval = f"lambda {','.join(variables)}: {formula}"
+        self._for_eval = f"lambda {','.join(variables)}: {formula}"
         self.formula = formula
         self.index_path = tuple(index_path)
-        self.variables = variables
+        self.vars_ = vars_
         self.total_vars_loaded = total_vars_loaded
-        self.key = key
+        self._key = eval(self._for_eval) # not just `key` to ensure no errors
         
     def __repr__(self):
-        return f"iu_lambda(key={self.for_eval})"
+        return f"iu_lambda(key={self._for_eval})"
 
     def __str__(self):
-        return f"<class iu_lambda({self.for_eval}) at {hex(id(self))}>"
+        return f"<class iu_lambda({self._for_eval}) at {hex(id(self))}>"
 
     def __call__(self, *args, **kwargs):
         return self.key(*args, **kwargs)
 
-    def from_lambda(key):
+    def from_lambda(key, verbose=True):
         instructions = list(dis.get_instructions(key))
-        print([instr.opname for instr in instructions])
+        if verbose: print([instr.opname for instr in instructions])
         RETURN = instructions[-1].opname
         if RETURN.endswith("CONST"):
             return str(RETURN.argval)
         elif RETURN.endswith("VALUE"):
-            print("Start loop!!")
+            if verbose: print("Start loop!!")
             i=0
-            QUEUE = []
-            LOADED_GLOBALS_QUEUE = []
+            STACK = []
+            LOADED_GLOBALS_STACK = []
             index_path = []
             TOTAL_VARS_LOADED = 0
             VAR_NAMES = set()
             for instr in instructions:
-                print(f"\nInstruction {i}: {instr.opname}"); i+= 1
+                if verbose: print(f"\nInstruction {i}: {instr.opname}"); i+= 1
                 
                 match instr.opname:
                     case "RESUME":
                         continue
                     case "LOAD_CONST":
-                        QUEUE.append(str(instr.argval))
-                        print(f"Loaded {instr.argval} to QUEUE")
+                        STACK.append(str(instr.argval))
+                        if verbose: print(f"Loaded {instr.argval} to STACK")
                     case "LOAD_FAST":
-                        QUEUE.append(str(instr.argval))
+                        STACK.append(str(instr.argval))
                         VAR_NAMES.add(str(instr.argval))
                         TOTAL_VARS_LOADED += 1
-                        print(f"Loaded {instr.argval} to QUEUE")
+                        if verbose: print(f"Loaded {instr.argval} to STACK")
                     case "UNARY_INVERT":
-                        QUEUE[-1] = "~"+QUEUE[-1]
+                        STACK[-1] = "~"+STACK[-1]
                     case "BINARY_SUBSCR":
-                        QUEUE[-2] = f"{QUEUE[-2]}[{QUEUE[-1]}]"
-                        index_path.append(QUEUE[-1])
-                        QUEUE.pop(-1)
+                        STACK[-2] = f"{STACK[-2]}[{STACK[-1]}]"
+                        index_path.append(STACK.pop(-1))
                     case "LOAD_GLOBAL":
-                        LOADED_GLOBALS_QUEUE.append(instr.argval)
-                        print(f"loaded global variable '{str(instr.argval)}'")
+                        LOADED_GLOBALS_STACK.append(instr.argval)
+                        if verbose: print(f"loaded global variable '{str(instr.argval)}'")
                     case "CALL":
-                        last_global = LOADED_GLOBALS_QUEUE.pop(-1)
-                        QUEUE[-1] = f"{last_global}({QUEUE[1]})"
-                        print(f"retrieved last loaded global '{last_global}'")
+                        last_global = LOADED_GLOBALS_STACK.pop(-1)
+                        STACK[-1] = f"{last_global}({STACK[1]})"
+                        if verbose: print(f"retrieved last loaded global '{last_global}'")
                     case "CALL_FUNCTION":
-                        last_global = LOADED_GLOBALS_QUEUE.pop(-1)
-                        QUEUE[-1] = f"{last_global}({QUEUE[-1]})"
-                        print(f"retrieved last loaded global '{last_global}'")
+                        last_global = LOADED_GLOBALS_STACK.pop(-1)
+                        STACK[-1] = f"{last_global}({STACK[-1]})"
+                        if verbose: print(f"retrieved last loaded global '{last_global}'")
                     case "LOAD_ATTR":
-                        QUEUE[-1] += "." + str(instr.argval)
+                        STACK[-1] += "." + str(instr.argval)
                     case "RETURN_VALUE":
-                        return ("".join(QUEUE), index_path, VAR_NAMES, TOTAL_VARS_LOADED)
+                        return (STACK[-1], index_path, VAR_NAMES, TOTAL_VARS_LOADED)
                     case _:
                         if instr.opname.startswith("BINARY_"):
                             #strip off "BINARY_"
                             opname = instr.opname[7:]
                             symbol_code = instr.argval
                             # if older command, find matching symbol for name
+                            opnames = ("ADD", "AND", "FLOOR_DIVIDE", "LSHIFT", "MATRIX_MULTIPLY", "MULTIPLY", "MODULO", "OR", "POWER", "RSHIFT", "SUBTRACT", "TRUE_DIVIDE", "XOR")
+                            operators = ('+', '&', '//', '<<', '@', '*', '%', '|', '**', '>>', '-', '/', '^')
+                            ops = dict(zip(opnames,operators))
+                            
                             if opname != "OP":
-                                opnames = ("ADD", "AND", "FLOOR_DIVIDE", "LSHIFT", "MATRIX_MULTIPLY", "MULTIPLY", "MODULO", "OR", "POWER", "RSHIFT", "SUBTRACT", "TRUE_DIVIDE", "XOR")
                                 try:
                                     symbol_code = opnames.index(opname)
                                 except ValueError:
-                                    raise ValueError(f"Unable to find binary operation {instr.opname}")
+                                     raise ValueError(f"Unable to find binary operation {instr.opname}")
                             # now find the correct symbol
-                            operators = ('+', '&', '//', '<<', '@', '*', '%', '|', '**', '>>', '-', '/', '^')
                         
                             if operators[symbol_code] is not None:
-                                QUEUE[-2] += operators[symbol_code]+QUEUE[-1]
-                                print(f"Operation completed: {QUEUE[-2]}{operators[symbol_code]}{QUEUE[-1]}")
-                                QUEUE.pop(-1)
+                                STACK[-2] += operators[symbol_code]+STACK.pop(-1)
+                                if verbose: print(f"Operation completed: {STACK[-2]}{operators[symbol_code]}{STACK[-1]}")
                             else: 
                                 raise ValueError(f"Unexpected operator argval {instr.argval}") 
+                        elif opname.startswith("BUILD_"):
+                            if opname.endswith("_EXTEND"):
+                                raise ValueError("HOLY SHIT _EXTEND IS STILL REAL LESSGOOOO")
+                            n = instr.argval
+                            if verbose: print(f"Constructing iterable of {n} element(s): {', '.join(STACK[-n:])}")
+                            new_iterable = []
+                            for _ in range(n):
+                                new_iterable.append(STACK.pop(-1))
+                            STACK.append(f"[{','.join((i for i in STACK[-n:]))}]")
                         
                         else:
-                            print(f"ERROR!! unexpected opname '{instr.opname}'")
+                            if verbose: print(f"ERROR!! unexpected opname '{instr.opname}'")
 
-                print(" ".join(QUEUE))
+                if verbose: print(" ".join(STACK))
         else:
             raise ValueError(f"ERROR!! Unexpected return code '{instr.opname}'")
-    def lambda_analyse(key):
+    
+    def from_string(self):
+        pass
+    
+    def analyse(key):
         """Deconstruct a lambda into its main components and print a chronological table"""
         instructions = list(dis.get_instructions(key))
         for instr in instructions:
@@ -114,24 +127,22 @@ class iu_lambda:
 
 class iu_list(list):
     def __init__(self, iterable, replace_all=False):
-        self.apply_key = False
-        super().__init__(iterable)
-        self.track_sorted = True
+        self._apply_key = False
+        if replace_all:
+            iterable = deep_replace(iterable, iu_list)
         self.is_reversed = False
-        self.track_reverse = True
         self._key = iu_lambda(lambda x:x)
         self.sorted = self.is_sorted()
         self.hash_history = set()
         self.current_hash = self.last_saved_hash = None
-        if replace_all:
-            for index, item in enumerate(self):
-                if is_iterable(item, exclude_string=True):
-                    self[index] = iu_list(item)
+        super().__init__(iterable)
 
+    def __repr__(self):
+        return f"iu_list({super().__repr__()})"
 
     def __setitem__(self,index,value):
         self.current_hash = None
-        if self.apply_key:
+        if self._apply_key:
             pass
         super().__setitem__(index,value)
         if self.track_sorted and self.sorted:
@@ -139,7 +150,7 @@ class iu_list(list):
 
     def __getitem__(self, index):
         item = super().__getitem__(index)
-        if self.apply_key is True:
+        if self._apply_key is True:
             item = self._key.key(item)
         return item
 
@@ -150,6 +161,7 @@ class iu_list(list):
         self.current_hash = None
         super().reverse()
         self.is_reversed = not self.is_reversed
+        return self
 
     def append(self,x):
         self.current_hash = None
@@ -171,12 +183,17 @@ class iu_list(list):
         self.sorted = self.is_sorted(index)
 
     def sort(self, *, reverse=None, key=None):
+        
+        # check if list already sorted
         if self.sorted and iu_lambda(key).formula==self._key.formula:
+            # list is sorted so simply check reverse
             if reverse:
                 self.reverse()
                 self.current_hash = None
             print("bypassed!!")
             return self
+
+
         self.current_hash = None
         if not callable(key):
             key = self._key.key
@@ -238,10 +255,10 @@ class iu_list(list):
         self._key.key = iu_key(key)
 
     def activate_key(self):
-        self.apply_key = True
+        self._apply_key = True
     
     def deactivate_key(self):
-        self.apply_key = False
+        self._apply_key = False
 
     @property
     def with_key_applied(self):

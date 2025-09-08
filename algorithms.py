@@ -67,10 +67,7 @@ def merge_sort(iterable, *, reverse=False, key=lambda x:x, visual=False):
         else:
             iterable[i] = right[right_ptr]
             right_ptr += 1
-        
-    #if visual:
-    #    print(iterable, end="\n",flush=True)
-    #    sleep(1/len(self))
+
     return iterable
 
 def binary_search(self, target, *, reverse=None, key=None, override_sorted=False):
