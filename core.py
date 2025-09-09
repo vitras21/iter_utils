@@ -86,7 +86,7 @@ class iu_lambda:
                             ops = dict(zip(opnames,operators))
                             
                             if opname != "OP":
-                                symbol_code = find_match(opname, ops)
+                                symbol_code = ops.get(opname)
                                 if symbol_code is None:
                                      raise ValueError(f"Unable to find binary operation {instr.opname}")
 
@@ -102,7 +102,7 @@ class iu_lambda:
                             arr_data = dict(zip(arrays_names, arrays_symbols))
                             
                             name = instr.opname[6:]
-                            left, right = find_match(name, arr_data)
+                            left, right = arr_data.get(name)
 
                             n = instr.argval
                             if verbose: print(f"Constructing {name} of {n} element(s): {', '.join(STACK[-n:])}")
