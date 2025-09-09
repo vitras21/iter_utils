@@ -38,7 +38,7 @@ class iu_lambda:
             LOADED_GLOBALS_STACK = []
             index_path = []
             TOTAL_VARS_LOADED = 0
-            VAR_NAMES = set()
+            VAR_NAMES = []
             for instr in instructions:
                 if verbose: print(f"\nInstruction {i}: {instr.opname}"); i+= 1
                 
@@ -49,10 +49,12 @@ class iu_lambda:
                         STACK.append(str(instr.argval))
                         if verbose: print(f"Loaded {instr.argval} to STACK")
                     case "LOAD_FAST":
-                        STACK.append(str(instr.argval))
-                        VAR_NAMES.add(str(instr.argval))
+                        var = instr.argval
+                        STACK.append(str(var))
+                        if var not in VAR_NAMES:
+                            VAR_NAMES.append(str(var))
                         TOTAL_VARS_LOADED += 1
-                        if verbose: print(f"Loaded {instr.argval} to STACK")
+                        if verbose: print(f"Loaded {var} to STACK")
                     case "UNARY_INVERT":
                         STACK[-1] = "~"+STACK[-1]
                     case "BINARY_SUBSCR":
@@ -84,26 +86,37 @@ class iu_lambda:
                             ops = dict(zip(opnames,operators))
                             
                             if opname != "OP":
-                                try:
-                                    symbol_code = opnames.index(opname)
-                                except ValueError:
+                                symbol_code = find_match(opname, ops)
+                                if symbol_code is None:
                                      raise ValueError(f"Unable to find binary operation {instr.opname}")
-                            # now find the correct symbol
-                        
-                            if operators[symbol_code] is not None:
-                                STACK[-2] += operators[symbol_code]+STACK.pop(-1)
-                                if verbose: print(f"Operation completed: {STACK[-2]}{operators[symbol_code]}{STACK[-1]}")
-                            else: 
-                                raise ValueError(f"Unexpected operator argval {instr.argval}") 
-                        elif opname.startswith("BUILD_"):
-                            if opname.endswith("_EXTEND"):
-                                raise ValueError("HOLY SHIT _EXTEND IS STILL REAL LESSGOOOO")
+
+                            if verbose: print(f"Operation completed: {STACK[-2]}{operators[symbol_code]}{STACK[-1]}")
+                            STACK[-2] += operators[symbol_code]+STACK.pop(-1)
+
+
+                        elif instr.opname.startswith("BUILD_"):
+                            if instr.opname.endswith("_EXTEND"):
+                                raise ValueError("HOLY SHIT _EXTEND IS STILL REAL FUUUUUUUUUUUU-")
+                            arrays_names = ["LIST", "TUPLE", "SET", "MAP"]
+                            arrays_symbols = ["[]", "()", "{}", "{}"]
+                            arr_data = dict(zip(arrays_names, arrays_symbols))
+                            
+                            name = instr.opname[6:]
+                            left, right = find_match(name, arr_data)
+
                             n = instr.argval
-                            if verbose: print(f"Constructing iterable of {n} element(s): {', '.join(STACK[-n:])}")
-                            new_iterable = []
+                            if verbose: print(f"Constructing {name} of {n} element(s): {', '.join(STACK[-n:])}")
+                            new_iterable = ""
                             for _ in range(n):
-                                new_iterable.append(STACK.pop(-1))
-                            STACK.append(f"[{','.join((i for i in STACK[-n:]))}]")
+                                if name == "MAP":
+                                    key, val = STACK.pop(-2), STACK.pop(-1)
+                                    string = f"{key}: {val}, "
+                                else:
+                                    string = f"{STACK.pop(-1)}, "
+                                new_iterable = string + new_iterable
+
+                            new_iterable = left + new_iterable[:-2] + right # remove the final ', '
+                            STACK.append(new_iterable)
                         
                         else:
                             if verbose: print(f"ERROR!! unexpected opname '{instr.opname}'")
