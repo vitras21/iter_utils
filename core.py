@@ -791,7 +791,7 @@ class iu_list(list):
         if self._apply_key:
             pass
         super().__setitem__(index,value)
-        if self.track_sorted and self.sorted:
+        if self.sorted:
             self.sorted = self.is_sorted(index)
 
     def __getitem__(self, index):
