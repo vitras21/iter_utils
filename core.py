@@ -871,7 +871,7 @@ class iu_list(list):
         if not callable(key):
             key = self._key.key
         else:
-            self._key.key = key
+            self._key = iu_lambda(key)
 
         if reverse is not None:
             self.is_reversed = reverse
